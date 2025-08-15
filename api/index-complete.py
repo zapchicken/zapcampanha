@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 import io
 import base64
+import chardet
 
 app = Flask(__name__)
 app.secret_key = 'zapcampanhas_secret_key'
@@ -28,9 +29,47 @@ reports_storage = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def process_csv_data(content):
-    """Processa dados CSV"""
+def detect_encoding(content):
+    """Detecta a codificação do arquivo"""
     try:
+        # Tenta detectar a codificação
+        result = chardet.detect(content)
+        encoding = result['encoding']
+        confidence = result['confidence']
+        
+        # Se a confiança for baixa, tenta codificações comuns
+        if confidence < 0.7:
+            for enc in ['utf-8', 'latin1', 'cp1252', 'iso-8859-1']:
+                try:
+                    content.decode(enc)
+                    return enc
+                except:
+                    continue
+        
+        return encoding or 'utf-8'
+    except:
+        return 'utf-8'
+
+def process_csv_data(content_bytes):
+    """Processa dados CSV com detecção automática de codificação"""
+    try:
+        # Detecta a codificação
+        encoding = detect_encoding(content_bytes)
+        
+        # Decodifica o conteúdo
+        try:
+            content = content_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            # Se falhar, tenta outras codificações
+            for enc in ['latin1', 'cp1252', 'iso-8859-1']:
+                try:
+                    content = content_bytes.decode(enc)
+                    break
+                except:
+                    continue
+            else:
+                return {"error": "Não foi possível decodificar o arquivo. Verifique a codificação."}
+        
         lines = content.split('\n')
         if not lines or not lines[0].strip():
             return {"error": "Arquivo CSV vazio ou inválido"}
@@ -52,7 +91,8 @@ def process_csv_data(content):
             "columns": columns,
             "column_count": len(columns),
             "sample_data": data[:5],
-            "file_type": "CSV"
+            "file_type": "CSV",
+            "encoding": encoding
         }
         
         # Análise por coluna
@@ -74,7 +114,7 @@ def process_csv_data(content):
     except Exception as e:
         return {"error": f"Erro ao processar CSV: {str(e)}"}
 
-def process_excel_data(content, filename):
+def process_excel_data(content_bytes, filename):
     """Processa dados Excel (simulado)"""
     return {
         "error": "Processamento de Excel será implementado em breve",
@@ -135,6 +175,15 @@ def index():
                 max-height: 300px;
                 overflow-y: auto;
             }
+            .file-item {
+                border: 1px solid #dee2e6;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                padding: 10px;
+            }
+            .file-item:hover {
+                background-color: #f8f9fa;
+            }
         </style>
     </head>
     <body>
@@ -156,10 +205,10 @@ def index():
                             <div class="upload-area" id="uploadArea">
                                 <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                                 <h5>Arraste arquivos aqui ou clique para selecionar</h5>
-                                <p class="text-muted">Suporte: CSV, Excel (xlsx, xls)</p>
-                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+                                <p class="text-muted">Suporte: CSV, Excel (xlsx, xls) - Múltiplos arquivos</p>
+                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" multiple style="display: none;">
                                 <button class="btn btn-zap-primary" onclick="document.getElementById('fileInput').click()">
-                                    Selecionar Arquivo
+                                    Selecionar Arquivos
                                 </button>
                             </div>
                             <div id="uploadResult" class="mt-3"></div>
@@ -187,8 +236,11 @@ def index():
             <div class="row mt-4">
                 <div class="col-md-6">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h5><i class="fas fa-folder"></i> Arquivos Carregados</h5>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearAllFiles()">
+                                <i class="fas fa-trash"></i> Limpar Todos
+                            </button>
                         </div>
                         <div class="card-body">
                             <div id="fileList" class="file-list">
@@ -204,6 +256,9 @@ def index():
                             <h5><i class="fas fa-chart-bar"></i> Relatórios Gerados</h5>
                         </div>
                         <div class="card-body">
+                            <button onclick="generateReport()" class="btn btn-zap-primary mb-3">
+                                <i class="fas fa-plus"></i> Gerar Relatório
+                            </button>
                             <div id="reportList" class="file-list">
                                 <p class="text-muted">Nenhum relatório gerado ainda.</p>
                             </div>
@@ -250,9 +305,9 @@ def index():
 
             // Upload de arquivo
             document.getElementById('fileInput').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    uploadFile(file);
+                const files = e.target.files;
+                if (files.length > 0) {
+                    uploadFiles(files);
                 }
             });
 
@@ -278,52 +333,83 @@ def index():
                 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    uploadFile(files[0]);
+                    uploadFiles(files);
                 }
             });
 
-            function uploadFile(file) {
-                const formData = new FormData();
-                formData.append('file', file);
+            function uploadFiles(files) {
+                const totalFiles = files.length;
+                let uploadedCount = 0;
+                let successCount = 0;
+                let errorCount = 0;
                 
                 document.getElementById('uploadResult').innerHTML = 
                     `<div class="alert alert-info">
-                        <strong>📤 Enviando arquivo...</strong><br>
-                        ${file.name}
+                        <strong>📤 Enviando ${totalFiles} arquivo(s)...</strong><br>
+                        <div id="uploadProgress">0/${totalFiles} concluído</div>
                     </div>`;
                 
-                fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('uploadResult').innerHTML = 
-                            `<div class="alert alert-success">
-                                <strong>✅ Sucesso!</strong><br>
-                                ${data.message}<br>
-                                Arquivo: ${data.analysis.filename}<br>
-                                Linhas: ${data.analysis.total_rows}<br>
-                                Colunas: ${data.analysis.column_count}
-                            </div>`;
+                Array.from(files).forEach((file, index) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        uploadedCount++;
                         
-                        // Atualizar lista de arquivos
-                        loadFileList();
-                    } else {
-                        document.getElementById('uploadResult').innerHTML = 
-                            `<div class="alert alert-danger">
-                                <strong>❌ Erro:</strong><br>
-                                ${data.error}
-                            </div>`;
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('uploadResult').innerHTML = 
-                        `<div class="alert alert-danger">
-                            <strong>❌ Erro:</strong><br>
-                            ${error.message}
-                        </div>`;
+                        if (data.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                        
+                        // Atualiza progresso
+                        document.getElementById('uploadProgress').innerHTML = 
+                            `${uploadedCount}/${totalFiles} concluído (${successCount} sucesso, ${errorCount} erro)`;
+                        
+                        // Se todos os arquivos foram processados
+                        if (uploadedCount === totalFiles) {
+                            if (errorCount === 0) {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-success">
+                                        <strong>✅ Todos os ${totalFiles} arquivo(s) processados com sucesso!</strong>
+                                    </div>`;
+                            } else if (successCount === 0) {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-danger">
+                                        <strong>❌ Erro ao processar todos os arquivos</strong>
+                                    </div>`;
+                            } else {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-warning">
+                                        <strong>⚠️ Processamento parcial:</strong><br>
+                                        ${successCount} sucesso(s), ${errorCount} erro(s)
+                                    </div>`;
+                            }
+                            
+                            // Atualizar lista de arquivos
+                            loadFileList();
+                        }
+                    })
+                    .catch(error => {
+                        uploadedCount++;
+                        errorCount++;
+                        
+                        document.getElementById('uploadProgress').innerHTML = 
+                            `${uploadedCount}/${totalFiles} concluído (${successCount} sucesso, ${errorCount} erro)`;
+                        
+                        if (uploadedCount === totalFiles) {
+                            document.getElementById('uploadResult').innerHTML = 
+                                `<div class="alert alert-danger">
+                                    <strong>❌ Erro no upload:</strong><br>
+                                    ${error.message}
+                                </div>`;
+                        }
+                    });
                 });
             }
 
@@ -367,6 +453,176 @@ def index():
                     });
             }
 
+            // Visualizar arquivo
+            function viewFile(fileId) {
+                fetch(`/api/files/${fileId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.file) {
+                            const file = data.file;
+                            const analysis = file.analysis;
+                            
+                            let html = `
+                                <div class="modal fade" id="fileModal" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">${file.name}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <h6>Informações do Arquivo:</h6>
+                                                <ul>
+                                                    <li><strong>Tamanho:</strong> ${file.size} bytes</li>
+                                                    <li><strong>Linhas:</strong> ${analysis.total_rows}</li>
+                                                    <li><strong>Colunas:</strong> ${analysis.column_count}</li>
+                                                    <li><strong>Tipo:</strong> ${analysis.file_type}</li>
+                                                    ${analysis.encoding ? `<li><strong>Codificação:</strong> ${analysis.encoding}</li>` : ''}
+                                                </ul>
+                                                
+                                                <h6>Colunas:</h6>
+                                                <ul>
+                                                    ${analysis.columns.map(col => `<li>${col}</li>`).join('')}
+                                                </ul>
+                                                
+                                                <h6>Amostra de Dados:</h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                ${analysis.columns.map(col => `<th>${col}</th>`).join('')}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            ${analysis.sample_data.map(row => 
+                                                                `<tr>${analysis.columns.map(col => `<td>${row[col] || ''}</td>`).join('')}</tr>`
+                                                            ).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Remove modal anterior se existir
+                            const existingModal = document.getElementById('fileModal');
+                            if (existingModal) {
+                                existingModal.remove();
+                            }
+                            
+                            // Adiciona novo modal
+                            document.body.insertAdjacentHTML('beforeend', html);
+                            
+                            // Mostra modal
+                            const modal = new bootstrap.Modal(document.getElementById('fileModal'));
+                            modal.show();
+                        }
+                    })
+                    .catch(error => {
+                        alert(`Erro ao carregar arquivo: ${error.message}`);
+                    });
+            }
+
+            // Deletar arquivo
+            function deleteFile(fileId) {
+                if (confirm('Tem certeza que deseja excluir este arquivo?')) {
+                    fetch(`/api/files/${fileId}/delete`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadFileList();
+                        } else {
+                            alert(`Erro ao excluir: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        alert(`Erro ao excluir arquivo: ${error.message}`);
+                    });
+                }
+            }
+
+            // Limpar todos os arquivos
+            function clearAllFiles() {
+                if (confirm('Tem certeza que deseja excluir todos os arquivos?')) {
+                    fetch('/api/files/clear', {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadFileList();
+                        } else {
+                            alert(`Erro ao limpar: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        alert(`Erro ao limpar arquivos: ${error.message}`);
+                    });
+                }
+            }
+
+            // Gerar relatório
+            function generateReport() {
+                fetch('/api/reports/generate', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Relatório gerado com sucesso!');
+                        loadReportList();
+                    } else {
+                        alert(`Erro ao gerar relatório: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    alert(`Erro ao gerar relatório: ${error.message}`);
+                });
+            }
+
+            // Carregar lista de relatórios
+            function loadReportList() {
+                fetch('/api/reports')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.reports && data.reports.length > 0) {
+                            let html = '<div class="list-group">';
+                            data.reports.forEach(report => {
+                                html += `
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>Relatório ${report.id}</strong><br>
+                                                <small class="text-muted">
+                                                    Gerado em: ${report.generated}<br>
+                                                    Arquivos: ${report.summary.total_files} • 
+                                                    Linhas: ${report.summary.total_rows}
+                                                </small>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewReport('${report.id}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            html += '</div>';
+                            document.getElementById('reportList').innerHTML = html;
+                        } else {
+                            document.getElementById('reportList').innerHTML = 
+                                '<p class="text-muted">Nenhum relatório gerado ainda.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('reportList').innerHTML = 
+                            `<div class="alert alert-danger">Erro ao carregar relatórios: ${error.message}</div>`;
+                    });
+            }
+
             // Chat
             function sendQuestion() {
                 const question = document.getElementById('question').value;
@@ -401,6 +657,7 @@ def index():
 
             // Carregar dados iniciais
             loadFileList();
+            loadReportList();
         </script>
     </body>
     </html>
@@ -416,7 +673,8 @@ def status():
         'version': '2.0.0',
         'message': 'ZapCampanhas API com sistema de arquivos completo!',
         'features': [
-            'Upload de CSV e Excel',
+            'Upload múltiplo de CSV e Excel',
+            'Detecção automática de codificação',
             'Processamento de dados',
             'Chat com IA',
             'Geração de relatórios'
@@ -446,14 +704,14 @@ def upload_file():
         if file_size > MAX_FILE_SIZE:
             return jsonify({'error': f'Arquivo muito grande. Máximo: {MAX_FILE_SIZE // (1024*1024)}MB'}), 400
         
-        # Lê o conteúdo
-        content = file.read().decode('utf-8')
+        # Lê o conteúdo como bytes
+        content_bytes = file.read()
         
         # Processa baseado no tipo
         if file.filename.lower().endswith('.csv'):
-            analysis = process_csv_data(content)
+            analysis = process_csv_data(content_bytes)
         else:
-            analysis = process_excel_data(content, file.filename)
+            analysis = process_excel_data(content_bytes, file.filename)
         
         if 'error' in analysis:
             return jsonify({'error': analysis['error']}), 400
@@ -465,7 +723,7 @@ def upload_file():
             'name': file.filename,
             'size': file_size,
             'uploaded': datetime.now().isoformat(),
-            'content': content,
+            'content': content_bytes.decode(analysis.get('encoding', 'utf-8')),
             'analysis': analysis
         }
         
@@ -517,6 +775,16 @@ def delete_file(file_id):
     return jsonify({
         'success': True,
         'message': 'Arquivo removido com sucesso'
+    })
+
+@app.route('/api/files/clear', methods=['DELETE'])
+def clear_all_files():
+    """Remove todos os arquivos"""
+    global file_storage
+    file_storage = {}
+    return jsonify({
+        'success': True,
+        'message': 'Todos os arquivos removidos com sucesso'
     })
 
 @app.route('/api/chat', methods=['POST'])
