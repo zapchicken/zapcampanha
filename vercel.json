@@ -6,7 +6,9 @@
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "15mb",
-        "runtime": "python3.9"
+        "runtime": "python3.9",
+        "maxDuration": 30,
+        "memory": 1024
       }
     }
   ],
@@ -20,12 +22,6 @@
       "dest": "api/index.py"
     }
   ],
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  },
   "env": {
     "PYTHONPATH": ".",
     "VERCEL_ENV": "production"
