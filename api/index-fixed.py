@@ -325,6 +325,7 @@ def index():
             });
 
             function uploadFiles(files) {
+                console.log('DEBUG: Iniciando upload de', files.length, 'arquivos');
                 const totalFiles = files.length;
                 let uploadedCount = 0;
                 let successCount = 0;
@@ -337,6 +338,7 @@ def index():
                     </div>`;
                 
                 Array.from(files).forEach((file, index) => {
+                    console.log('DEBUG: Processando arquivo', index + 1, ':', file.name);
                     const formData = new FormData();
                     formData.append('file', file);
                     
@@ -344,14 +346,20 @@ def index():
                         method: 'POST',
                         body: formData
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('DEBUG: Response status:', response.status);
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('DEBUG: Response data:', data);
                         uploadedCount++;
                         
                         if (data.success) {
                             successCount++;
+                            console.log('DEBUG: Arquivo processado com sucesso:', file.name);
                         } else {
                             errorCount++;
+                            console.log('DEBUG: Erro no arquivo:', file.name, data.error);
                         }
                         
                         // Atualiza progresso
@@ -360,6 +368,7 @@ def index():
                         
                         // Se todos os arquivos foram processados
                         if (uploadedCount === totalFiles) {
+                            console.log('DEBUG: Todos os arquivos processados');
                             if (errorCount === 0) {
                                 document.getElementById('uploadResult').innerHTML = 
                                     `<div class="alert alert-success">
@@ -383,6 +392,7 @@ def index():
                         }
                     })
                     .catch(error => {
+                        console.log('DEBUG: Erro na requisição:', error);
                         uploadedCount++;
                         errorCount++;
                         
