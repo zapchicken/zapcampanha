@@ -195,26 +195,6 @@ def index():
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-            // Verificar status da API
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('apiStatus').innerHTML = 
-                        `<div class="alert alert-success">
-                            <strong>✅ API Online!</strong><br>
-                            Status: ${data.status}<br>
-                            Versão: ${data.version}<br>
-                            Mensagem: ${data.message}
-                        </div>`;
-                })
-                .catch(error => {
-                    document.getElementById('apiStatus').innerHTML = 
-                        `<div class="alert alert-danger">
-                            <strong>❌ Erro na API:</strong><br>
-                            ${error.message}
-                        </div>`;
-                });
-
             // Upload de arquivo
             document.getElementById('fileInput').addEventListener('change', function(e) {
                 const files = e.target.files;
