@@ -2,18 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index-no-pandas.py",
+      "src": "api/index-vercel.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index-no-pandas.py"
+      "dest": "api/index-vercel.py"
     },
     {
       "src": "/(.*)",
-      "dest": "api/index-no-pandas.py"
+      "dest": "api/index-vercel.py"
     }
   ]
 }
