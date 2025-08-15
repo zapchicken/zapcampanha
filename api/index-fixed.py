@@ -399,21 +399,70 @@ def index():
 
             // Processar dados
             function processData() {
+                // Primeiro processa os dados básicos
                 fetch('/api/process', {
                     method: 'POST'
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('reportArea').innerHTML = 
-                            `<div class="alert alert-success">
-                                <strong>✅ Dados processados!</strong><br>
-                                ${data.message}<br>
-                                <strong>Resumo:</strong><br>
-                                • Total de arquivos: ${data.summary.total_files}<br>
-                                • Total de linhas: ${data.summary.total_rows}<br>
-                                • Tipos de arquivo: ${data.summary.file_types.join(', ')}
-                            </div>`;
+                        // Depois gera o relatório avançado com cruzamentos
+                        return fetch('/api/reports/generate', {
+                            method: 'POST'
+                        });
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const report = data.report;
+                        const analysis = report.cross_analysis;
+                        
+                        let html = `<div class="alert alert-success">
+                            <h5><i class="fas fa-chart-bar"></i> Análise Cruzada Completa</h5>
+                            <hr>
+                            <strong>📊 Resumo Geral:</strong><br>
+                            • Total de arquivos: ${report.summary.total_files}<br>
+                            • Total de registros: ${analysis.total_records}<br>
+                            • Arquivos analisados: ${analysis.files_analyzed}<br>
+                            • Colunas encontradas: ${Object.keys(analysis.column_mapping).length}<br><br>
+                            
+                            <strong>🔍 Colunas Comuns:</strong><br>`;
+                        
+                        if (analysis.common_columns && analysis.common_columns.length > 0) {
+                            analysis.common_columns.slice(0, 5).forEach(col => {
+                                html += `• <strong>${col.column}</strong> (${col.count} arquivos)<br>`;
+                            });
+                        } else {
+                            html += `• Nenhuma coluna comum encontrada<br>`;
+                        }
+                        
+                        html += `<br><strong>📋 Análise por Coluna:</strong><br>`;
+                        
+                        Object.entries(analysis.column_analysis).slice(0, 8).forEach(([col, info]) => {
+                            html += `• <strong>${col}</strong> (${info.type}) - ${info.unique_values} valores únicos<br>`;
+                        });
+                        
+                        // Adiciona insights
+                        if (analysis.insights && analysis.insights.length > 0) {
+                            html += `<br><strong>💡 Insights Inteligentes:</strong><br>`;
+                            analysis.insights.forEach(insight => {
+                                html += `• <strong>${insight.title}</strong>: ${insight.description}<br>`;
+                            });
+                        }
+                        
+                        html += `<br>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="viewReport('${data.report_id}')">
+                                <i class="fas fa-eye"></i> Ver Detalhes Completos
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="showReportInsights('${data.report_id}')">
+                                <i class="fas fa-lightbulb"></i> Ver Insights Detalhados
+                            </button>
+                        </div>`;
+                        
+                        document.getElementById('reportArea').innerHTML = html;
                     } else {
                         document.getElementById('reportArea').innerHTML = 
                             `<div class="alert alert-danger">
@@ -1051,6 +1100,7 @@ def analyze_cross_data():
         # Insight 3: Análise de tipos de dados
         monetary_cols = [col for col, info in column_analysis.items() if info['type'] == 'monetary']
         date_cols = [col for col, info in column_analysis.items() if info['type'] == 'date']
+        numeric_cols = [col for col, info in column_analysis.items() if info['type'] == 'numeric']
         
         if monetary_cols:
             insights.append({
@@ -1067,6 +1117,40 @@ def analyze_cross_data():
                 'description': f'Colunas com datas: {", ".join(date_cols)}',
                 'data': date_cols
             })
+        
+        if numeric_cols:
+            insights.append({
+                'type': 'numeric_data',
+                'title': 'Dados Numéricos Detectados',
+                'description': f'Colunas com valores numéricos: {", ".join(numeric_cols)}',
+                'data': numeric_cols
+            })
+        
+        # Insight 4: Análise de qualidade dos dados
+        empty_cols = [col for col, info in column_analysis.items() if info['total_values'] == 0]
+        if empty_cols:
+            insights.append({
+                'type': 'empty_columns',
+                'title': 'Colunas Vazias Detectadas',
+                'description': f'Colunas sem dados: {", ".join(empty_cols)}',
+                'data': empty_cols
+            })
+        
+        # Insight 5: Análise de arquivos
+        file_analysis = {}
+        for file_id, file_data in file_storage.items():
+            file_analysis[file_data['name']] = {
+                'type': file_data['analysis'].get('file_type'),
+                'rows': file_data['analysis'].get('total_rows', 0),
+                'columns': file_data['analysis'].get('column_count', 0)
+            }
+        
+        insights.append({
+            'type': 'file_summary',
+            'title': 'Resumo por Arquivo',
+            'description': f'Análise detalhada de {len(file_analysis)} arquivos carregados',
+            'data': file_analysis
+        })
         
         analysis['insights'] = insights
         
