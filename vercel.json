@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "api/index-no-pandas.py",
-      "use": "@vercel/python",
-      "config": {
-        "requirements": "requirements-minimal.txt"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
