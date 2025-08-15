@@ -120,10 +120,10 @@ def index():
                             <div class="upload-area" id="uploadArea">
                                 <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                                 <h5>Arraste arquivos aqui ou clique para selecionar</h5>
-                                <p class="text-muted">Suporte: CSV, Excel (xlsx, xls)</p>
-                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+                                <p class="text-muted">Suporte: CSV, Excel (xlsx, xls) - Múltiplos arquivos</p>
+                                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" multiple style="display: none;">
                                 <button class="btn btn-zap-primary" onclick="document.getElementById('fileInput').click()">
-                                    Selecionar Arquivo
+                                    Selecionar Arquivos
                                 </button>
                             </div>
                             <div id="uploadResult" class="mt-3"></div>
@@ -217,9 +217,9 @@ def index():
 
             // Upload de arquivo
             document.getElementById('fileInput').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    uploadFile(file);
+                const files = e.target.files;
+                if (files.length > 0) {
+                    uploadFiles(files);
                 }
             });
 
@@ -245,57 +245,83 @@ def index():
                 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    uploadFile(files[0]);
+                    uploadFiles(files);
                 }
             });
 
-            function uploadFile(file) {
-                const formData = new FormData();
-                formData.append('file', file);
+            function uploadFiles(files) {
+                const totalFiles = files.length;
+                let uploadedCount = 0;
+                let successCount = 0;
+                let errorCount = 0;
                 
                 document.getElementById('uploadResult').innerHTML = 
                     `<div class="alert alert-info">
-                        <strong>📤 Enviando arquivo...</strong><br>
-                        ${file.name}
+                        <strong>📤 Enviando ${totalFiles} arquivo(s)...</strong><br>
+                        <div id="uploadProgress">0/${totalFiles} concluído</div>
                     </div>`;
                 
-                fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        let message = `<div class="alert alert-success">
-                            <strong>✅ Sucesso!</strong><br>
-                            ${data.message}<br>
-                            Arquivo: ${data.analysis.file_type}<br>
-                            Linhas: ${data.analysis.total_rows}<br>
-                            Colunas: ${data.analysis.column_count}`;
+                Array.from(files).forEach((file, index) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        uploadedCount++;
                         
-                        if (data.warning) {
-                            message += `<br><strong>Aviso:</strong> ${data.warning}`;
+                        if (data.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
                         }
                         
-                        message += '</div>';
-                        document.getElementById('uploadResult').innerHTML = message;
+                        // Atualiza progresso
+                        document.getElementById('uploadProgress').innerHTML = 
+                            `${uploadedCount}/${totalFiles} concluído (${successCount} sucesso, ${errorCount} erro)`;
                         
-                        // Atualizar lista de arquivos
-                        loadFileList();
-                    } else {
-                        document.getElementById('uploadResult').innerHTML = 
-                            `<div class="alert alert-danger">
-                                <strong>❌ Erro:</strong><br>
-                                ${data.error}
-                            </div>`;
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('uploadResult').innerHTML = 
-                        `<div class="alert alert-danger">
-                            <strong>❌ Erro:</strong><br>
-                            ${error.message}
-                        </div>`;
+                        // Se todos os arquivos foram processados
+                        if (uploadedCount === totalFiles) {
+                            if (errorCount === 0) {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-success">
+                                        <strong>✅ Todos os ${totalFiles} arquivo(s) processados com sucesso!</strong>
+                                    </div>`;
+                            } else if (successCount === 0) {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-danger">
+                                        <strong>❌ Erro ao processar todos os arquivos</strong>
+                                    </div>`;
+                            } else {
+                                document.getElementById('uploadResult').innerHTML = 
+                                    `<div class="alert alert-warning">
+                                        <strong>⚠️ Processamento parcial:</strong><br>
+                                        ${successCount} sucesso(s), ${errorCount} erro(s)
+                                    </div>`;
+                            }
+                            
+                            // Atualizar lista de arquivos
+                            loadFileList();
+                        }
+                    })
+                    .catch(error => {
+                        uploadedCount++;
+                        errorCount++;
+                        
+                        document.getElementById('uploadProgress').innerHTML = 
+                            `${uploadedCount}/${totalFiles} concluído (${successCount} sucesso, ${errorCount} erro)`;
+                        
+                        if (uploadedCount === totalFiles) {
+                            document.getElementById('uploadResult').innerHTML = 
+                                `<div class="alert alert-danger">
+                                    <strong>❌ Erro no upload:</strong><br>
+                                    ${error.message}
+                                </div>`;
+                        }
+                    });
                 });
             }
 
