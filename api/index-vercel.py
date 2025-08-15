@@ -90,6 +90,14 @@ def chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/data_status')
+def data_status():
+    """Status dos dados (simulado)"""
+    return jsonify({
+        'status': 'no_data',
+        'message': 'Nenhum dado carregado ainda.'
+    })
+
 @app.route('/check_files')
 def check_files():
     """Verifica arquivos disponíveis (simulado)"""
@@ -101,6 +109,58 @@ def check_files():
             'url': '/download/relatorio_exemplo.json'
         }
     ])
+
+@app.route('/view_file/<filename>')
+def view_file(filename):
+    """Visualiza arquivo (simulado)"""
+    return jsonify({
+        'filename': filename,
+        'content': 'Conteúdo do arquivo será implementado em breve.',
+        'message': 'Funcionalidade de visualização será implementada.'
+    })
+
+@app.route('/chat_message', methods=['POST'])
+def chat_message():
+    """Chat message (simulado)"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        return jsonify({
+            'response': f'Mensagem recebida: "{message}". Chat será implementado em breve.',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/config_gemini', methods=['POST'])
+def config_gemini():
+    """Configuração Gemini (simulado)"""
+    try:
+        data = request.get_json()
+        api_key = data.get('api_key', '')
+        return jsonify({
+            'status': 'success',
+            'message': 'API Gemini será configurada em breve.',
+            'api_key': api_key[:10] + '...' if api_key else ''
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gemini_status')
+def gemini_status():
+    """Status da API Gemini (simulado)"""
+    return jsonify({
+        'status': 'not_configured',
+        'message': 'API Gemini não configurada ainda.'
+    })
+
+@app.route('/clear_cache')
+def clear_cache():
+    """Limpa cache (simulado)"""
+    return jsonify({
+        'status': 'success',
+        'message': 'Cache limpo com sucesso.'
+    })
 
 @app.route('/download/<filename>')
 def download_file(filename):
@@ -121,7 +181,13 @@ def test():
             '/api/upload',
             '/api/chat',
             '/api/test',
-            '/check_files'
+            '/check_files',
+            '/data_status',
+            '/view_file/<filename>',
+            '/chat_message',
+            '/config_gemini',
+            '/gemini_status',
+            '/clear_cache'
         ]
     })
 
