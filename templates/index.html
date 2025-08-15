@@ -7,8 +7,28 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            /* Cores principais */
+            --zap-orange: #FF8000;
+            --zap-orange-dark: #FF4000;
+            --zap-red: #FF0000;
+            --zap-bordeaux: #800000;
+            
+            /* Neutras */
+            --zap-black: #000000;
+            --zap-gray-dark: #333333;
+            --zap-gray: #666666;
+            --zap-gray-light: #CCCCCC;
+            --zap-white: #FFFFFF;
+            
+            /* Apoio */
+            --zap-yellow: #F8CA00;
+            --zap-green: #8A9B0F;
+            --zap-purple: #490A3D;
+        }
+        
         .upload-area {
-            border: 2px dashed #007bff;
+            border: 2px dashed var(--zap-orange);
             border-radius: 10px;
             padding: 20px;
             text-align: center;
@@ -16,7 +36,7 @@
             transition: all 0.3s ease;
         }
         .upload-area:hover {
-            border-color: #0056b3;
+            border-color: var(--zap-orange-dark);
             background-color: #e9ecef;
         }
         .file-status {
@@ -72,12 +92,56 @@
          .table-responsive::-webkit-scrollbar-thumb:hover {
              background: #555;
          }
+         
+         /* Botões personalizados */
+         .btn-zap-primary {
+             background-color: var(--zap-orange);
+             border-color: var(--zap-orange);
+             color: white;
+         }
+         .btn-zap-primary:hover {
+             background-color: var(--zap-orange-dark);
+             border-color: var(--zap-orange-dark);
+             color: white;
+         }
+         
+         .btn-zap-success {
+             background-color: var(--zap-green);
+             border-color: var(--zap-green);
+             color: white;
+         }
+         
+         .btn-zap-warning {
+             background-color: var(--zap-yellow);
+             border-color: var(--zap-yellow);
+             color: var(--zap-black);
+         }
+         
+         .btn-zap-danger {
+             background-color: var(--zap-red);
+             border-color: var(--zap-red);
+             color: white;
+         }
+         
+         /* Cards personalizados */
+         .card-zap {
+             border: 1px solid var(--zap-gray-light);
+             border-radius: 8px;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+         }
+         
+         .card-zap-header {
+             background: linear-gradient(135deg, var(--zap-orange) 0%, var(--zap-orange-dark) 100%);
+             color: white;
+             padding: 15px;
+             border-radius: 8px 8px 0 0;
+         }
     </style>
 </head>
 <body>
     <div class="container-fluid">
         <!-- Header -->
-        <div class="row bg-primary text-white py-4">
+        <div class="row py-4" style="background: linear-gradient(135deg, var(--zap-orange) 0%, var(--zap-orange-dark) 100%); color: white;">
             <div class="col-12 text-center">
                 <h1><i class="fas fa-drumstick-bite"></i> ZapCampanhas</h1>
                 <h4>Business Intelligence para ZapChicken</h4>
@@ -133,7 +197,7 @@
                     <!-- Coluna Esquerda - Upload -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header bg-primary text-white">
+                            <div class="card-header card-zap-header">
                                 <h5><i class="fas fa-upload"></i> Upload de Arquivos</h5>
                             </div>
                             <div class="card-body">
@@ -145,7 +209,7 @@
                             <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="d-inline">
                                 <input type="hidden" name="file_type" value="contacts">
                                 <input type="file" name="file" accept=".csv,.xlsx,.xls" class="form-control mb-2" required>
-                                <button type="submit" class="btn btn-primary btn-sm">
+                                <button type="submit" class="btn btn-zap-primary btn-sm">
                                     <i class="fas fa-upload"></i> Enviar
                                 </button>
                             </form>
@@ -157,7 +221,7 @@
                             <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="d-inline">
                                 <input type="hidden" name="file_type" value="clientes">
                                 <input type="file" name="file" accept=".xlsx,.xls" class="form-control mb-2" required>
-                                <button type="submit" class="btn btn-primary btn-sm">
+                                <button type="submit" class="btn btn-zap-primary btn-sm">
                                     <i class="fas fa-upload"></i> Enviar
                                 </button>
                             </form>
@@ -169,7 +233,7 @@
                             <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="d-inline">
                                 <input type="hidden" name="file_type" value="pedidos">
                                 <input type="file" name="file" accept=".xlsx,.xls" class="form-control mb-2" required>
-                                <button type="submit" class="btn btn-primary btn-sm">
+                                <button type="submit" class="btn btn-zap-primary btn-sm">
                                     <i class="fas fa-upload"></i> Enviar
                                 </button>
                             </form>
@@ -181,7 +245,7 @@
                             <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="d-inline">
                                 <input type="hidden" name="file_type" value="itens">
                                 <input type="file" name="file" accept=".xlsx,.xls" class="form-control mb-2" required>
-                                <button type="submit" class="btn btn-primary btn-sm">
+                                <button type="submit" class="btn btn-zap-primary btn-sm">
                                     <i class="fas fa-upload"></i> Enviar
                                 </button>
                             </form>
@@ -211,10 +275,10 @@
                                         </div>
                                     </div>
                                                                          <div class="text-center mt-3">
-                                         <button type="submit" class="btn btn-success btn-lg">
+                                         <button type="submit" class="btn btn-zap-success btn-lg">
                                              <i class="fas fa-rocket"></i> Processar Dados
                                          </button>
-                                         <button type="button" class="btn btn-warning btn-sm ms-2" onclick="clearCache()">
+                                         <button type="button" class="btn btn-zap-warning btn-sm ms-2" onclick="clearCache()">
                                              <i class="fas fa-broom"></i> Limpar Cache
                                          </button>
                                      </div>
@@ -228,7 +292,7 @@
             <!-- Coluna Direita - Relatórios -->
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header bg-success text-white">
+                    <div class="card-header card-zap-header">
                         <h5><i class="fas fa-file-alt"></i> Relatórios Disponíveis</h5>
                     </div>
                     <div class="card-body">
@@ -301,7 +365,7 @@
                                 </div>
                                 <div class="input-group">
                                     <input type="text" id="chat-input" class="form-control" placeholder="Digite sua pergunta..." onkeypress="if(event.keyCode==13) sendMessage()">
-                                    <button class="btn btn-primary" onclick="sendMessage()">
+                                    <button class="btn btn-zap-primary" onclick="sendMessage()">
                                         <i class="fas fa-paper-plane"></i> Enviar
                                     </button>
                                 </div>
