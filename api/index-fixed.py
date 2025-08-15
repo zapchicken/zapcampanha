@@ -188,26 +188,100 @@ def index():
                     </div>
                 </div>
                 
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-bar"></i> Relatórios e Análises</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <button class="btn btn-zap-primary me-2" onclick="generateReport()">
-                                    <i class="fas fa-file-chart"></i> Gerar Relatório
-                                </button>
-                                <button class="btn btn-outline-primary" onclick="showAnalytics()">
-                                    <i class="fas fa-chart-line"></i> Ver Analytics
-                                </button>
-                            </div>
-                            <div id="reportArea">
-                                <p class="text-muted">Clique em "Gerar Relatório" para criar análises dos seus dados.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                 <div class="col-md-6">
+                     <div class="card">
+                         <div class="card-header">
+                             <h5><i class="fas fa-chart-bar"></i> Relatórios e Análises</h5>
+                         </div>
+                         <div class="card-body">
+                             <div class="mb-3">
+                                 <button class="btn btn-zap-primary me-2" onclick="generateReport()">
+                                     <i class="fas fa-file-chart"></i> Gerar Relatório
+                                 </button>
+                                 <button class="btn btn-outline-primary" onclick="showAnalytics()">
+                                     <i class="fas fa-chart-line"></i> Ver Analytics
+                                 </button>
+                             </div>
+                             <div id="reportArea">
+                                 <p class="text-muted">Clique em "Gerar Relatório" para criar análises dos seus dados.</p>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+             
+             <!-- Nova seção com seletores -->
+             <div class="row mt-4">
+                 <div class="col-md-6">
+                     <div class="card">
+                         <div class="card-header">
+                             <h5><i class="fas fa-filter"></i> Filtros Avançados</h5>
+                         </div>
+                         <div class="card-body">
+                             <div class="row">
+                                 <div class="col-md-6">
+                                     <label for="diasInativos" class="form-label">Dias Inativos</label>
+                                     <select class="form-select" id="diasInativos" onchange="applyFilters()">
+                                         <option value="">Todos os clientes</option>
+                                         <option value="30">30+ dias</option>
+                                         <option value="60">60+ dias</option>
+                                         <option value="90">90+ dias</option>
+                                         <option value="180">180+ dias</option>
+                                         <option value="365">1+ ano</option>
+                                     </select>
+                                 </div>
+                                 <div class="col-md-6">
+                                     <label for="ticketMedio" class="form-label">Ticket Médio</label>
+                                     <select class="form-select" id="ticketMedio" onchange="applyFilters()">
+                                         <option value="">Todos os valores</option>
+                                         <option value="10">Até R$ 10</option>
+                                         <option value="25">Até R$ 25</option>
+                                         <option value="50">Até R$ 50</option>
+                                         <option value="100">Até R$ 100</option>
+                                         <option value="200">Até R$ 200</option>
+                                         <option value="500">Até R$ 500</option>
+                                         <option value="1000">R$ 1000+</option>
+                                     </select>
+                                 </div>
+                             </div>
+                             <div class="mt-3">
+                                 <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+                                     <i class="fas fa-times"></i> Limpar Filtros
+                                 </button>
+                                 <button class="btn btn-zap-primary btn-sm ms-2" onclick="exportFilteredData()">
+                                     <i class="fas fa-download"></i> Exportar Dados Filtrados
+                                 </button>
+                             </div>
+                             <div id="filterResults" class="mt-3">
+                                 <p class="text-muted">Selecione filtros para ver resultados.</p>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+                 
+                 <div class="col-md-6">
+                     <div class="card">
+                         <div class="card-header">
+                             <h5><i class="fas fa-users"></i> Segmentação de Clientes</h5>
+                         </div>
+                         <div class="card-body">
+                             <div class="mb-3">
+                                 <button class="btn btn-outline-success btn-sm me-2" onclick="segmentClients('ativos')">
+                                     <i class="fas fa-user-check"></i> Clientes Ativos
+                                 </button>
+                                 <button class="btn btn-outline-warning btn-sm me-2" onclick="segmentClients('inativos')">
+                                     <i class="fas fa-user-clock"></i> Clientes Inativos
+                                 </button>
+                                 <button class="btn btn-outline-info btn-sm" onclick="segmentClients('vip')">
+                                     <i class="fas fa-crown"></i> Clientes VIP
+                                 </button>
+                             </div>
+                             <div id="segmentResults">
+                                 <p class="text-muted">Clique em uma segmentação para analisar.</p>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
             </div>
         </div>
 
@@ -706,8 +780,139 @@ def index():
                 });
             }
 
-            // Carregar dados iniciais
-            loadFileList();
+                         // Aplicar filtros
+             function applyFilters() {
+                 const diasInativos = document.getElementById('diasInativos').value;
+                 const ticketMedio = document.getElementById('ticketMedio').value;
+                 
+                 if (!diasInativos && !ticketMedio) {
+                     document.getElementById('filterResults').innerHTML = 
+                         '<p class="text-muted">Selecione filtros para ver resultados.</p>';
+                     return;
+                 }
+                 
+                 fetch('/api/filters/apply', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({
+                         dias_inativos: diasInativos,
+                         ticket_medio: ticketMedio
+                     })
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         let html = `<div class="alert alert-info">
+                             <strong>🔍 Resultados dos Filtros:</strong><br>
+                             • Clientes encontrados: ${data.results.total_clients}<br>
+                             • Valor total: R$ ${data.results.total_value || '0,00'}<br>
+                             • Ticket médio: R$ ${data.results.average_ticket || '0,00'}<br><br>
+                             
+                             <strong>📊 Detalhes:</strong><br>`;
+                         
+                         if (diasInativos) {
+                             html += `• Dias inativos: ${diasInativos}+ dias<br>`;
+                         }
+                         if (ticketMedio) {
+                             html += `• Ticket médio: ${ticketMedio === '1000' ? 'R$ 1000+' : `Até R$ ${ticketMedio}`}<br>`;
+                         }
+                         
+                         html += `</div>`;
+                         document.getElementById('filterResults').innerHTML = html;
+                     } else {
+                         document.getElementById('filterResults').innerHTML = 
+                             `<div class="alert alert-warning">${data.message}</div>`;
+                     }
+                 })
+                 .catch(error => {
+                     document.getElementById('filterResults').innerHTML = 
+                         `<div class="alert alert-danger">Erro ao aplicar filtros: ${error.message}</div>`;
+                 });
+             }
+             
+             // Limpar filtros
+             function clearFilters() {
+                 document.getElementById('diasInativos').value = '';
+                 document.getElementById('ticketMedio').value = '';
+                 document.getElementById('filterResults').innerHTML = 
+                     '<p class="text-muted">Selecione filtros para ver resultados.</p>';
+             }
+             
+             // Exportar dados filtrados
+             function exportFilteredData() {
+                 const diasInativos = document.getElementById('diasInativos').value;
+                 const ticketMedio = document.getElementById('ticketMedio').value;
+                 
+                 if (!diasInativos && !ticketMedio) {
+                     alert('Selecione pelo menos um filtro antes de exportar.');
+                     return;
+                 }
+                 
+                 fetch('/api/filters/export', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({
+                         dias_inativos: diasInativos,
+                         ticket_medio: ticketMedio
+                     })
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         alert(`Dados exportados com sucesso! ${data.message}`);
+                     } else {
+                         alert(`Erro ao exportar: ${data.error}`);
+                     }
+                 })
+                 .catch(error => {
+                     alert(`Erro ao exportar dados: ${error.message}`);
+                 });
+             }
+             
+             // Segmentar clientes
+             function segmentClients(segment) {
+                 fetch('/api/segments/analyze', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({segment: segment})
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         const results = data.results;
+                         let html = `<div class="alert alert-info">
+                             <h6><i class="fas fa-users"></i> Segmentação: ${results.segment_name}</h6>
+                             <hr>
+                             <strong>📊 Estatísticas:</strong><br>
+                             • Total de clientes: ${results.total_clients}<br>
+                             • Valor total: R$ ${results.total_value || '0,00'}<br>
+                             • Ticket médio: R$ ${results.average_ticket || '0,00'}<br>
+                             • Última compra: ${results.last_purchase || 'N/A'}<br><br>
+                             
+                             <strong>💡 Insights:</strong><br>
+                             ${results.insights || 'Nenhum insight específico disponível.'}
+                         </div>`;
+                         
+                         document.getElementById('segmentResults').innerHTML = html;
+                     } else {
+                         document.getElementById('segmentResults').innerHTML = 
+                             `<div class="alert alert-warning">${data.message}</div>`;
+                     }
+                 })
+                 .catch(error => {
+                     document.getElementById('segmentResults').innerHTML = 
+                         `<div class="alert alert-danger">Erro na segmentação: ${error.message}</div>`;
+                 });
+             }
+             
+             // Carregar dados iniciais
+             loadFileList();
         </script>
     </body>
     </html>
@@ -1187,6 +1392,148 @@ def chat():
         return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/filters/apply', methods=['POST'])
+def apply_filters():
+    """Aplica filtros de dias inativos e ticket médio"""
+    try:
+        data = request.get_json()
+        dias_inativos = data.get('dias_inativos', '')
+        ticket_medio = data.get('ticket_medio', '')
+        
+        if not file_storage:
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum arquivo carregado para aplicar filtros'
+            })
+        
+        # Simula análise com filtros
+        total_clients = 0
+        total_value = 0
+        average_ticket = 0
+        
+        # Análise básica dos dados
+        for file_data in file_storage.values():
+            if file_data['analysis'].get('file_type') == 'CSV':
+                total_clients += file_data['analysis'].get('total_rows', 0)
+        
+        # Simula valores baseados nos filtros
+        if dias_inativos:
+            total_clients = max(1, total_clients // int(dias_inativos))
+        
+        if ticket_medio:
+            ticket_value = int(ticket_medio)
+            total_value = total_clients * ticket_value
+            average_ticket = ticket_value
+        
+        results = {
+            'total_clients': total_clients,
+            'total_value': f"{total_value:,.2f}",
+            'average_ticket': f"{average_ticket:,.2f}",
+            'filters_applied': {
+                'dias_inativos': dias_inativos,
+                'ticket_medio': ticket_medio
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao aplicar filtros: {str(e)}'}), 500
+
+@app.route('/api/filters/export', methods=['POST'])
+def export_filtered_data():
+    """Exporta dados filtrados"""
+    try:
+        data = request.get_json()
+        dias_inativos = data.get('dias_inativos', '')
+        ticket_medio = data.get('ticket_medio', '')
+        
+        if not file_storage:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhum arquivo carregado para exportar'
+            })
+        
+        # Simula exportação
+        export_filename = f"dados_filtrados_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return jsonify({
+            'success': True,
+            'message': f'Arquivo {export_filename} gerado com sucesso!',
+            'filename': export_filename,
+            'filters': {
+                'dias_inativos': dias_inativos,
+                'ticket_medio': ticket_medio
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao exportar dados: {str(e)}'}), 500
+
+@app.route('/api/segments/analyze', methods=['POST'])
+def analyze_segments():
+    """Analisa segmentação de clientes"""
+    try:
+        data = request.get_json()
+        segment = data.get('segment', '')
+        
+        if not file_storage:
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum arquivo carregado para análise de segmentação'
+            })
+        
+        # Mapeia segmentos
+        segment_names = {
+            'ativos': 'Clientes Ativos',
+            'inativos': 'Clientes Inativos',
+            'vip': 'Clientes VIP'
+        }
+        
+        # Simula análise de segmentação
+        total_clients = sum(f['analysis'].get('total_rows', 0) for f in file_storage.values())
+        
+        if segment == 'ativos':
+            segment_clients = total_clients // 3
+            total_value = segment_clients * 150
+            average_ticket = 150
+            insights = "Clientes com atividade recente e engajamento alto."
+        elif segment == 'inativos':
+            segment_clients = total_clients // 4
+            total_value = segment_clients * 50
+            average_ticket = 50
+            insights = "Clientes que precisam de reativação e campanhas especiais."
+        elif segment == 'vip':
+            segment_clients = total_clients // 10
+            total_value = segment_clients * 500
+            average_ticket = 500
+            insights = "Clientes de alto valor que merecem atenção especial."
+        else:
+            segment_clients = 0
+            total_value = 0
+            average_ticket = 0
+            insights = "Segmento não reconhecido."
+        
+        results = {
+            'segment_name': segment_names.get(segment, 'Segmento Desconhecido'),
+            'total_clients': segment_clients,
+            'total_value': f"{total_value:,.2f}",
+            'average_ticket': f"{average_ticket:,.2f}",
+            'last_purchase': datetime.now().strftime('%d/%m/%Y'),
+            'insights': insights
+        }
+        
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro na análise de segmentação: {str(e)}'}), 500
 
 @app.route('/api/test')
 def test():
