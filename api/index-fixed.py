@@ -963,6 +963,61 @@ def index():
                  });
              }
              
+             // Download de relatórios
+             function downloadReport(type) {
+                 if (type === 'business') {
+                     // Simula download dos 5 relatórios
+                     const reports = [
+                         'novos_clientes_google_contacts.csv',
+                         'clientes_inativos.xlsx',
+                         'clientes_alto_ticket.xlsx',
+                         'analise_geografica.xlsx',
+                         'produtos_mais_vendidos.xlsx'
+                     ];
+                     
+                     alert(`📥 Download iniciado!\n\nArquivos que serão baixados:\n${reports.join('\n')}\n\nEm uma implementação completa, os arquivos seriam baixados automaticamente.`);
+                 }
+             }
+             
+             // Visualizar relatório de negócio
+             function viewBusinessReport() {
+                 fetch('/api/reports/business/details')
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         let html = `<div class="alert alert-info">
+                             <h5><i class="fas fa-chart-bar"></i> Detalhes dos Relatórios de Negócio</h5>
+                             <hr>
+                             <strong>📊 Resumo Executivo:</strong><br>
+                             • Total de relatórios: ${data.summary.total_reports}<br>
+                             • Clientes analisados: ${data.summary.total_clients_analyzed}<br>
+                             • Arquivos processados: ${data.summary.files_processed}<br><br>
+                             
+                             <strong>📋 Relatórios Disponíveis:</strong><br>`;
+                         
+                         data.reports.forEach(report => {
+                             html += `• <strong>${report.name}</strong> (${report.type})<br>
+                             <small class="text-muted">${report.description}</small><br><br>`;
+                         });
+                         
+                         html += `<strong>💡 Como Usar:</strong><br>
+                         • <strong>Google Contacts:</strong> Importe o CSV para adicionar novos clientes<br>
+                         • <strong>Campanhas:</strong> Use os Excel para segmentar clientes<br>
+                         • <strong>Meta Ads:</strong> Use análise geográfica para campanhas por bairro<br>
+                         • <strong>Produtos:</strong> Analise os produtos mais vendidos</div>`;
+                         
+                         document.getElementById('reportArea').innerHTML = html;
+                     } else {
+                         document.getElementById('reportArea').innerHTML = 
+                             `<div class="alert alert-danger">Erro ao carregar detalhes: ${data.error}</div>`;
+                     }
+                 })
+                 .catch(error => {
+                     document.getElementById('reportArea').innerHTML = 
+                         `<div class="alert alert-danger">Erro ao carregar detalhes: ${error.message}</div>`;
+                 });
+             }
+             
              // Carregar dados iniciais
              loadFileList();
         </script>
@@ -1679,6 +1734,73 @@ def generate_business_reports():
         
     except Exception as e:
         return jsonify({'error': f'Erro ao gerar relatórios: {str(e)}'}), 500
+
+@app.route('/api/reports/business/details')
+def get_business_report_details():
+    """Obtém detalhes dos relatórios de negócio"""
+    try:
+        if not file_storage:
+            return jsonify({'error': 'Nenhum arquivo carregado'}), 400
+        
+        # Simula dados dos relatórios
+        total_clients = sum(f['analysis'].get('total_rows', 0) for f in file_storage.values())
+        total_files = len(file_storage)
+        
+        reports = [
+            {
+                'name': 'Novos Clientes Google Contacts',
+                'description': 'Lista de novos clientes para importar no Google Contacts',
+                'type': 'CSV',
+                'filename': 'novos_clientes_google_contacts.csv',
+                'records': total_clients,
+                'usage': 'Importar no Google Contacts para adicionar novos clientes'
+            },
+            {
+                'name': 'Clientes Inativos',
+                'description': 'Análise de clientes inativos para campanhas de reativação',
+                'type': 'Excel',
+                'filename': 'clientes_inativos.xlsx',
+                'records': total_clients // 4,
+                'usage': 'Usar para campanhas de reativação de clientes'
+            },
+            {
+                'name': 'Clientes Alto Ticket',
+                'description': 'Análise de clientes premium para ofertas especiais',
+                'type': 'Excel',
+                'filename': 'clientes_alto_ticket.xlsx',
+                'records': total_clients // 3,
+                'usage': 'Usar para ofertas premium e VIP'
+            },
+            {
+                'name': 'Análise Geográfica',
+                'description': 'Análise por bairros para campanhas Meta',
+                'type': 'Excel',
+                'filename': 'analise_geografica.xlsx',
+                'records': 50,
+                'usage': 'Usar para campanhas Meta Ads por bairro'
+            },
+            {
+                'name': 'Produtos Mais Vendidos',
+                'description': 'Ranking de produtos mais vendidos',
+                'type': 'Excel',
+                'filename': 'produtos_mais_vendidos.xlsx',
+                'records': 20,
+                'usage': 'Analisar produtos mais populares'
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'reports': reports,
+            'summary': {
+                'total_reports': 5,
+                'total_clients_analyzed': total_clients,
+                'files_processed': total_files
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao obter detalhes: {str(e)}'}), 500
 
 @app.route('/api/test')
 def test():
