@@ -115,12 +115,42 @@ def process_csv_data(content_bytes):
         return {"error": f"Erro ao processar CSV: {str(e)}"}
 
 def process_excel_data(content_bytes, filename):
-    """Processa dados Excel (simulado)"""
-    return {
-        "error": "Processamento de Excel será implementado em breve",
-        "filename": filename,
-        "file_type": "Excel"
-    }
+    """Processa dados Excel"""
+    try:
+        # Por enquanto, simula processamento de Excel
+        # Em uma versão futura, implementaremos com openpyxl ou xlrd
+        
+        # Detecta a codificação (para arquivos Excel em texto)
+        encoding = detect_encoding(content_bytes)
+        
+        # Tenta decodificar como texto (para alguns formatos Excel)
+        try:
+            content = content_bytes.decode(encoding)
+            lines = content.split('\n')
+            
+            # Se parece com CSV, processa como CSV
+            if len(lines) > 1 and ',' in lines[0]:
+                return process_csv_data(content_bytes)
+        except:
+            pass
+        
+        # Para arquivos Excel binários, retorna informação básica
+        return {
+            "total_rows": 0,
+            "columns": [],
+            "column_count": 0,
+            "sample_data": [],
+            "file_type": "Excel",
+            "encoding": "binary",
+            "message": "Arquivo Excel detectado. Processamento completo será implementado em breve."
+        }
+        
+    except Exception as e:
+        return {
+            "error": f"Erro ao processar Excel: {str(e)}",
+            "filename": filename,
+            "file_type": "Excel"
+        }
 
 @app.route('/')
 def index():
@@ -713,17 +743,35 @@ def upload_file():
         else:
             analysis = process_excel_data(content_bytes, file.filename)
         
+        # Verifica se há erro no processamento
         if 'error' in analysis:
             return jsonify({'error': analysis['error']}), 400
         
+        # Para arquivos Excel que ainda não são totalmente suportados
+        if analysis.get('file_type') == 'Excel' and analysis.get('total_rows', 0) == 0:
+            return jsonify({
+                'success': True,
+                'message': 'Arquivo Excel recebido. Processamento completo será implementado em breve.',
+                'file_id': f"file_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                'analysis': analysis,
+                'warning': 'Processamento limitado para arquivos Excel'
+            })
+        
         # Salva no armazenamento temporário
         file_id = f"file_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Tenta decodificar o conteúdo para armazenamento
+        try:
+            content_text = content_bytes.decode(analysis.get('encoding', 'utf-8'))
+        except:
+            content_text = content_bytes.decode('latin1', errors='ignore')
+        
         file_storage[file_id] = {
             'id': file_id,
             'name': file.filename,
             'size': file_size,
             'uploaded': datetime.now().isoformat(),
-            'content': content_bytes.decode(analysis.get('encoding', 'utf-8')),
+            'content': content_text,
             'analysis': analysis
         }
         
