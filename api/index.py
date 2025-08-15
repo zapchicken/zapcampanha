@@ -20,10 +20,10 @@ OUTPUT_DIR = Path("data/output")
 UPLOAD_FOLDER = INPUT_DIR
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
-# Limites para Vercel
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_PROCESSING_TIME = 25  # 25 segundos (deixar margem para 30s)
-MAX_MEMORY_USAGE = 512  # 512MB
+# Limites para Vercel (mais restritivos)
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB (reduzido)
+MAX_PROCESSING_TIME = 20  # 20 segundos (margem maior)
+MAX_MEMORY_USAGE = 256  # 256MB (reduzido)
 
 # Cria diretórios se não existirem
 INPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,14 +142,22 @@ def process_data():
         global_processor.config['dias_inatividade'] = dias_inatividade
         global_processor.config['ticket_medio_minimo'] = ticket_minimo
         
-        # Carrega e processa os arquivos com timeout
-        global_processor.load_zapchicken_files()
-        
-        # Verifica tempo de execução
-        if time.time() - start_time > MAX_PROCESSING_TIME:
-            return jsonify({'error': 'Processamento muito lento. Tente com menos dados.'}), 408
-        
-        global_processor.save_reports()
+        # Carrega e processa os arquivos com timeout mais agressivo
+        try:
+            global_processor.load_zapchicken_files()
+            
+            # Verifica tempo de execução a cada etapa
+            if time.time() - start_time > MAX_PROCESSING_TIME:
+                return jsonify({'error': 'Carregamento muito lento. Tente com arquivos menores.'}), 408
+            
+            global_processor.save_reports()
+            
+            # Verifica tempo final
+            if time.time() - start_time > MAX_PROCESSING_TIME:
+                return jsonify({'error': 'Processamento muito lento. Tente com menos dados.'}), 408
+                
+        except Exception as e:
+            return jsonify({'error': f'Erro no processamento: {str(e)}'}), 500
         global_data_loaded = True
         
         # Limpa memória após processamento
