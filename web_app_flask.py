@@ -24,6 +24,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__)
 app.secret_key = 'zapcampanhas_secret_key'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 # Cache global para manter dados em memória
 global_processor = None
@@ -37,8 +38,11 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload_file', methods=['POST'])
 def upload_file():
+    print(f"Upload recebido: {request.files}")
+    print(f"Form data: {request.form}")
+    
     if 'file' not in request.files:
         flash('Nenhum arquivo selecionado')
         return redirect(request.url)
@@ -71,9 +75,11 @@ def upload_file():
     
     return redirect(url_for('index'))
 
-@app.route('/process', methods=['POST'])
+@app.route('/process_data', methods=['POST'])
 def process_data():
     global global_processor, global_data_loaded
+    
+    print(f"Processamento recebido: {request.form}")
     
     try:
         dias_inatividade = int(request.form.get('dias_inatividade', 30))
