@@ -2,18 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index-complete.py",
+      "src": "api/index-fixed.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index-complete.py"
+      "dest": "api/index-fixed.py"
     },
     {
       "src": "/(.*)",
-      "dest": "api/index-complete.py"
+      "dest": "api/index-fixed.py"
     }
   ]
 }
