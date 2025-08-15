@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 ZapCampanhas API - Endpoint principal para Vercel
+Versão otimizada para evitar overload
 """
 
 from flask import Flask, render_template, request, redirect, url_for, send_file, flash, jsonify
@@ -9,12 +10,20 @@ from pathlib import Path
 import pandas as pd
 from werkzeug.utils import secure_filename
 import json
+import gc
+import time
+from functools import wraps
 
 # Configurações
 INPUT_DIR = Path("data/input")
 OUTPUT_DIR = Path("data/output")
 UPLOAD_FOLDER = INPUT_DIR
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
+
+# Limites para Vercel
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_PROCESSING_TIME = 25  # 25 segundos (deixar margem para 30s)
+MAX_MEMORY_USAGE = 512  # 512MB
 
 # Cria diretórios se não existirem
 INPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,11 +32,42 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__)
 app.secret_key = 'zapcampanhas_secret_key'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
-# Cache global para manter dados em memória
+# Cache global com limpeza automática
 global_processor = None
 global_data_loaded = False
 global_ai_gemini = None
+last_activity = time.time()
+
+def cleanup_memory():
+    """Limpa memória para evitar overload"""
+    global global_processor, global_data_loaded, global_ai_gemini
+    
+    # Limpa processador se inativo há muito tempo
+    if time.time() - last_activity > 300:  # 5 minutos
+        global_processor = None
+        global_data_loaded = False
+        global_ai_gemini = None
+    
+    # Força coleta de lixo
+    gc.collect()
+
+def check_limits(func):
+    """Decorator para verificar limites do Vercel"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        
+        # Verifica tempo de execução
+        if time.time() - start_time > MAX_PROCESSING_TIME:
+            return jsonify({'error': 'Tempo limite excedido'}), 408
+        
+        # Limpa memória antes de processar
+        cleanup_memory()
+        
+        return func(*args, **kwargs)
+    return wrapper
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -37,6 +77,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
+@check_limits
 def upload_file():
     if 'file' not in request.files:
         flash('Nenhum arquivo selecionado')
@@ -47,6 +88,15 @@ def upload_file():
     
     if file.filename == '':
         flash('Nenhum arquivo selecionado')
+        return redirect(request.url)
+    
+    # Verifica tamanho do arquivo
+    file.seek(0, 2)  # Vai para o final
+    file_size = file.tell()
+    file.seek(0)  # Volta para o início
+    
+    if file_size > MAX_FILE_SIZE:
+        flash(f'Arquivo muito grande. Máximo: {MAX_FILE_SIZE // (1024*1024)}MB')
         return redirect(request.url)
     
     if file and allowed_file(file.filename):
@@ -71,10 +121,14 @@ def upload_file():
     return redirect(url_for('index'))
 
 @app.route('/process', methods=['POST'])
+@check_limits
 def process_data():
-    global global_processor, global_data_loaded
+    global global_processor, global_data_loaded, last_activity
     
     try:
+        start_time = time.time()
+        last_activity = time.time()
+        
         dias_inatividade = int(request.form.get('dias_inatividade', 30))
         ticket_minimo = float(request.form.get('ticket_minimo', 50))
         
@@ -88,11 +142,18 @@ def process_data():
         global_processor.config['dias_inatividade'] = dias_inatividade
         global_processor.config['ticket_medio_minimo'] = ticket_minimo
         
-        # Carrega e processa os arquivos
+        # Carrega e processa os arquivos com timeout
         global_processor.load_zapchicken_files()
-        global_processor.save_reports()
         
+        # Verifica tempo de execução
+        if time.time() - start_time > MAX_PROCESSING_TIME:
+            return jsonify({'error': 'Processamento muito lento. Tente com menos dados.'}), 408
+        
+        global_processor.save_reports()
         global_data_loaded = True
+        
+        # Limpa memória após processamento
+        cleanup_memory()
         
         flash('Dados processados com sucesso! Relatórios gerados.')
     except Exception as e:
