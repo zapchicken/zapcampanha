@@ -310,20 +310,32 @@ def index():
                 fetch('/api/files')
                     .then(response => response.json())
                     .then(data => {
+                        console.log('DEBUG: Dados recebidos:', data);
+                        
                         if (data.files && data.files.length > 0) {
-                            let html = '<div class="list-group">';
+                            let html = `<div class="alert alert-info mb-3">
+                                <strong>📁 Total de arquivos: ${data.total}</strong><br>
+                                <small>${data.debug_info || ''}</small>
+                            </div>
+                            <div class="list-group">`;
+                            
                             data.files.forEach(file => {
                                 html += `
                                     <div class="list-group-item d-flex justify-content-between align-items-center">
                                         <div>
                                             <strong>${file.name}</strong><br>
                                             <small class="text-muted">
-                                                ${file.size} bytes • ${file.uploaded}
+                                                ID: ${file.id} • ${file.size} bytes • ${file.uploaded}
                                             </small>
                                         </div>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('${file.id}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-primary me-2" onclick="viewFile('${file.id}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('${file.id}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 `;
                             });
@@ -335,9 +347,16 @@ def index():
                         }
                     })
                     .catch(error => {
+                        console.error('Erro ao carregar arquivos:', error);
                         document.getElementById('fileList').innerHTML = 
                             `<div class="alert alert-danger">Erro ao carregar arquivos: ${error.message}</div>`;
                     });
+            }
+
+            // Visualizar arquivo
+            function viewFile(fileId) {
+                // Por enquanto, apenas mostra uma mensagem
+                alert(`Visualizando arquivo ${fileId}. Funcionalidade completa será implementada em breve.`);
             }
 
             // Deletar arquivo
@@ -691,8 +710,9 @@ def upload_file():
                 'warning': 'Processamento limitado para arquivos Excel'
             })
         
-        # Salva no armazenamento temporário
-        file_id = f"file_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # Salva no armazenamento temporário com timestamp único
+        import time
+        file_id = f"file_{int(time.time() * 1000)}"
         file_storage[file_id] = {
             'id': file_id,
             'name': file.filename,
@@ -702,11 +722,15 @@ def upload_file():
             'analysis': analysis
         }
         
+        # Debug: mostra quantos arquivos estão armazenados
+        print(f"DEBUG: Arquivo {file.filename} salvo com ID {file_id}. Total de arquivos: {len(file_storage)}")
+        
         return jsonify({
             'success': True,
-            'message': f'Arquivo processado com sucesso!',
+            'message': f'Arquivo {file.filename} processado com sucesso!',
             'file_id': file_id,
-            'analysis': analysis
+            'analysis': analysis,
+            'total_files': len(file_storage)
         })
         
     except Exception as e:
@@ -724,9 +748,15 @@ def list_files():
             'uploaded': file_data['uploaded']
         })
     
+    # Debug: mostra informações sobre os arquivos
+    print(f"DEBUG: Listando {len(files)} arquivos:")
+    for f in files:
+        print(f"  - {f['name']} (ID: {f['id']})")
+    
     return jsonify({
         'files': files,
-        'total': len(files)
+        'total': len(files),
+        'debug_info': f"Total de arquivos no storage: {len(file_storage)}"
     })
 
 @app.route('/api/files/<file_id>/delete', methods=['DELETE'])
