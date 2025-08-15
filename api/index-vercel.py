@@ -90,6 +90,26 @@ def chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/check_files')
+def check_files():
+    """Verifica arquivos disponíveis (simulado)"""
+    return jsonify([
+        {
+            'name': 'relatorio_exemplo.json',
+            'size': 1024,
+            'modified': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'url': '/download/relatorio_exemplo.json'
+        }
+    ])
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    """Download de arquivo (simulado)"""
+    return jsonify({
+        'message': f'Download do arquivo {filename} será implementado em breve.',
+        'filename': filename
+    })
+
 @app.route('/api/test')
 def test():
     """Endpoint de teste"""
@@ -100,7 +120,8 @@ def test():
             '/api/status',
             '/api/upload',
             '/api/chat',
-            '/api/test'
+            '/api/test',
+            '/check_files'
         ]
     })
 
