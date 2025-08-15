@@ -2,18 +2,23 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index-fixed.py",
+      "src": "api/index-vercel.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index-fixed.py"
+      "dest": "/api/index-vercel.py"
     },
     {
       "src": "/(.*)",
-      "dest": "api/index-fixed.py"
+      "dest": "/api/index-vercel.py"
     }
-  ]
+  ],
+  "functions": {
+    "api/index-vercel.py": {
+      "maxDuration": 30
+    }
+  }
 }
