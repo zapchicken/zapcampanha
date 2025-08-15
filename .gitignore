@@ -129,3 +129,4 @@ yarn-error.log*
 
 # Local development
 local_settings.py
+.vercel
