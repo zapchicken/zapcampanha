@@ -2,21 +2,21 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "api/index-no-pandas.py",
       "use": "@vercel/python",
       "config": {
-        "requirements": "requirements-ultra.txt"
+        "requirements": "requirements-minimal.txt"
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.py"
+      "dest": "api/index-no-pandas.py"
     },
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "api/index-no-pandas.py"
     }
   ]
 }
