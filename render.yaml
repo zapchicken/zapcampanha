@@ -2,8 +2,12 @@ services:
   - type: web
     name: zapcampanhas
     env: python
-    buildCommand: pip install -r api/requirements.txt
-    startCommand: python api/index-vercel.py
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: FLASK_ENV
+        value: production
+    healthCheckPath: /api/status
+    autoDeploy: true
