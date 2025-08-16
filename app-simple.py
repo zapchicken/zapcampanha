@@ -2,6 +2,7 @@
 """
 ZapCampanhas - Aplicação Flask Simplificada para Render
 Versão sem pandas para deploy inicial
+FORCE DEPLOY - Versão 2.0.1
 """
 
 from flask import Flask, request, jsonify, render_template_string
