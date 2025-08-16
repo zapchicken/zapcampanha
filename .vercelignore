@@ -23,19 +23,23 @@ Thumbs.db
 # Logs
 *.log
 
-# Dados
-data/
-*.csv
-*.xlsx
-*.xls
+# Dados (mantém estrutura mas ignora conteúdo)
+data/input/*
+data/output/*
+!data/input/.gitkeep
+!data/output/.gitkeep
 
 # Testes
 test_*.py
 *_test.py
+debug_*.py
+diagnostico.py
 
-# Documentação
+# Documentação (mantém README)
 *.md
 !README.md
+!VERCEL_DEPLOY_GUIDE.md
+!SOLUCAO_VERCEL.md
 
 # Git
 .git/

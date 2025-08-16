@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: zapcampanhas
+    env: python
+    buildCommand: pip install -r api/requirements.txt
+    startCommand: python api/index-vercel.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
